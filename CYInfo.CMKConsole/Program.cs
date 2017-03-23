@@ -1,6 +1,8 @@
-﻿using System;
+﻿using HtmlAgilityPack;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -14,7 +16,9 @@ namespace CYInfo.CMKConsole
         {
             //Call_GetShoes_Api();
 
-            Call_GetFootSize_Api();
+            //Call_GetFootSize_Api();
+
+            GetVegetablePrices();
         }
 
 
@@ -67,6 +71,60 @@ namespace CYInfo.CMKConsole
                 string ttt = message;
             }
         }
+
+
+
+        public static string GetVegetablePrices()
+        {
+            string resultReturn = string.Empty;
+
+            WebClient client = new WebClient();
+            client.Encoding = System.Text.Encoding.GetEncoding("utf-8");
+
+
+
+            resultReturn = Encoding.UTF8.GetString(client.DownloadData("http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/"));
+
+            StringBuilder pureText = new StringBuilder();
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(resultReturn);
+
+            //resultReturn = doc.GetElementbyId("maincontent").InnerHtml;
+            
+
+
+                var findclasses = doc.DocumentNode
+                    .Descendants( "a" )
+                    .Where( d => 
+                        d.Attributes.Contains("href")
+                        &&
+                        d.Attributes["href"].Value.Contains("http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/")
+                    );
+
+            foreach(var entity in findclasses)
+            {
+                Console.WriteLine(entity.OuterHtml.ToString());
+
+                string url = entity.GetAttributeValue("href", "");
+                string brandName = entity.InnerHtml;
+
+           
+
+               
+                //var tt = entity.Attributes.
+
+            }
+
+
+                Console.WriteLine(findclasses);
+
+            return resultReturn;
+
+
+        }
+
+
+
 
     }
 }
