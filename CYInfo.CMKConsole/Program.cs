@@ -18,12 +18,8 @@ namespace CYInfo.CMKConsole
 
             //Call_GetFootSize_Api();
 
-            GetVegetablePrices();
+            GetBrandSizes();
         }
-
-
-
-
 
         public static void Call_GetShoes_Api()
         {
@@ -74,7 +70,7 @@ namespace CYInfo.CMKConsole
 
 
 
-        public static string GetVegetablePrices()
+        public static string GetBrandSizesUrl()
         {
             string resultReturn = string.Empty;
 
@@ -89,10 +85,6 @@ namespace CYInfo.CMKConsole
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(resultReturn);
 
-            //resultReturn = doc.GetElementbyId("maincontent").InnerHtml;
-            
-
-
                 var findclasses = doc.DocumentNode
                     .Descendants( "a" )
                     .Where( d => 
@@ -103,27 +95,70 @@ namespace CYInfo.CMKConsole
 
             foreach(var entity in findclasses)
             {
-                Console.WriteLine(entity.OuterHtml.ToString());
-
                 string url = entity.GetAttributeValue("href", "");
                 string brandName = entity.InnerHtml;
-
-           
-
-               
-                //var tt = entity.Attributes.
-
             }
 
-
-                Console.WriteLine(findclasses);
-
-            return resultReturn;
-
-
+           return resultReturn;
         }
 
 
+
+        public static string GetBrandSizes()
+        {
+            string resultReturn = string.Empty;
+
+            WebClient client = new WebClient();
+            client.Encoding = System.Text.Encoding.GetEncoding("utf-8");
+
+
+
+            //resultReturn = Encoding.UTF8.GetString(client.DownloadData("http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/acorn-size-chart/"));
+            resultReturn = Encoding.UTF8.GetString(client.DownloadData("http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/adidas-size-chart/"));
+            
+            StringBuilder pureText = new StringBuilder();
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(resultReturn);
+
+            var findclasses = doc.DocumentNode
+                    .Descendants("div")
+                    .Where(d =>
+                        d.Attributes.Contains("class")
+                        &&
+                        d.Attributes["class"].Value.Contains("tablepress-scroll-wrapper")
+                    );
+
+
+            int i = 0;
+            foreach (var entity in findclasses)
+            {
+               switch(i++)
+               {
+                   case 0:
+                       //women
+                       Console.WriteLine("women:");
+                       Console.WriteLine(entity.OuterHtml);
+                       continue;
+                   case 1:
+                       //men
+                       Console.WriteLine("men:");
+                       continue;
+
+                   case 2:
+                       //kids
+                       Console.WriteLine("kids:");
+                       continue;
+                   case 3:
+                       //Baby 
+                       Console.WriteLine("Baby:");
+                       continue;
+               }
+
+            }
+
+            Console.ReadKey();
+            return resultReturn;
+        }
 
 
     }
