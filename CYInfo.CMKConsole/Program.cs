@@ -318,67 +318,71 @@ namespace CYInfo.CMKConsole
             try
             {
                 var targetCollection = DB.database.GetCollection("Sizes4Brand");
-
-                string brandName="Adidas";
-                string gender="Women";
-
-                List<IMongoQuery> qryList = new List<IMongoQuery>();
-                qryList.Add(Query.EQ("BrandName", brandName));
-
-                IMongoQuery query = Query.And(qryList);
-
-                var entity = targetCollection.FindOne(query);
-
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml(entity[gender].ToString());
-
-                var findThs = doc.DocumentNode
-                           .Descendants("th");
-
-                List<string> thsList=new List<string>();
-                
-                foreach(var findTh in findThs)
+                var entities = targetCollection.FindAll();
+                HtmlDocument doc;
+                string brandName;
+                string[] genders = { "Women", "Men", "Kids", "Baby" };
+                foreach (var entity in entities)
                 {
-                    thsList.Add(findTh.InnerHtml);
-                }
-
-                string[] ths = thsList.ToArray();
-
-                var findTrs = doc.DocumentNode
-                           .Descendants("tr")
-                           .Where(d =>
-                                d.Attributes.Contains("class")
-                                &&
-                                !d.Attributes["class"].Value.Contains("row-1 odd")
-                            );
-
-                BsonDocument bosonEntity;
-
-
-                foreach(var findTr in findTrs)
-                {
-                    bosonEntity = new BsonDocument();
-                    ObjectId item_id = ObjectId.GenerateNewId();
-                    bosonEntity.Add("_id", item_id);
-                    bosonEntity.Add("BrandName", brandName);
-                    bosonEntity.Add("Gender", gender);
-                    bosonEntity.Add("Status", 0);
-                    bosonEntity.Add("Created", DateTime.Now);
-                    int i = 0;
-                    foreach(var findTrTd in findTr.ChildNodes)
+                    brandName = entity["BrandName"].ToString();
+                    foreach (string gender in genders)
                     {
-                        bosonEntity.Add(ths[i++], findTrTd.InnerHtml);
+                        if (entity.IndexOfName(gender) >= 0)
+                        {
+                            doc = new HtmlDocument();
+                            doc.LoadHtml(entity[gender].ToString());
+                            SaveSizeCharts(doc, brandName, gender);
+                        }
                     }
-                    SaveData2DB("Sizes4BrandReal", bosonEntity);
                 }
-
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
+            }
+        }
 
+        public static void SaveSizeCharts(HtmlDocument doc, string brandName, string gender)
+        {
+
+            
+            BsonDocument bosonEntity;
+            var findThs = doc.DocumentNode
+                               .Descendants("th");
+
+            List<string>  thsList = new List<string>();
+
+            foreach (var findTh in findThs)
+            {
+                thsList.Add(findTh.InnerHtml);
             }
 
+            string[] ths = thsList.ToArray();
 
+            var findTrs = doc.DocumentNode
+                       .Descendants("tr")
+                       .Where(d =>
+                            d.Attributes.Contains("class")
+                            &&
+                            !d.Attributes["class"].Value.Contains("row-1 odd")
+                        );
+
+            foreach (var findTr in findTrs)
+            {
+                bosonEntity = new BsonDocument();
+                ObjectId item_id = ObjectId.GenerateNewId();
+                bosonEntity.Add("_id", item_id);
+                bosonEntity.Add("BrandName", brandName);
+                bosonEntity.Add("Gender", gender);
+                bosonEntity.Add("Created", DateTime.Now);
+                bosonEntity.Add("Status", 0);
+                int i = 0;
+                foreach (var findTrTd in findTr.ChildNodes)
+                {
+                    bosonEntity.Add(ths[i++], findTrTd.InnerHtml);
+                }
+                SaveData2DB("Sizes4BrandReal", bosonEntity);
+            }
         }
 
 
