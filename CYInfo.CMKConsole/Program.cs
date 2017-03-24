@@ -24,7 +24,8 @@ namespace CYInfo.CMKConsole
             //Call_GetFootSize_Api();
             //GetBrandSizesUrl();
             //GetBrandSizes();
-            GetBrandSizesSpecial();
+            //GetBrandSizesSpecial();
+            DataCleaning();
         }
 
         public static void Call_GetShoes_Api()
@@ -309,6 +310,151 @@ namespace CYInfo.CMKConsole
             }
             Console.ReadKey();
             return resultReturn;
+        }
+
+
+        public static void DataCleaning()
+        {
+            try
+            {
+                var targetCollection = DB.database.GetCollection("Sizes4Brand");
+
+                string brandName="Adidas";
+                string gender="Women";
+
+                List<IMongoQuery> qryList = new List<IMongoQuery>();
+                qryList.Add(Query.EQ("BrandName", brandName));
+
+                IMongoQuery query = Query.And(qryList);
+
+                var entity = targetCollection.FindOne(query);
+
+                HtmlDocument doc = new HtmlDocument();
+                doc.LoadHtml(entity[gender].ToString());
+
+                var findThs = doc.DocumentNode
+                           .Descendants("th");
+
+                List<string> thsList=new List<string>();
+                
+                foreach(var findTh in findThs)
+                {
+                    thsList.Add(findTh.InnerHtml);
+                }
+
+                string[] ths = thsList.ToArray();
+
+                var findTrs = doc.DocumentNode
+                           .Descendants("tr")
+                           .Where(d =>
+                                d.Attributes.Contains("class")
+                                &&
+                                !d.Attributes["class"].Value.Contains("row-1 odd")
+                            );
+
+                BsonDocument bosonEntity;
+
+
+                foreach(var findTr in findTrs)
+                {
+                    bosonEntity = new BsonDocument();
+                    ObjectId item_id = ObjectId.GenerateNewId();
+                    bosonEntity.Add("_id", item_id);
+                    bosonEntity.Add("BrandName", brandName);
+                    bosonEntity.Add("Gender", gender);
+                    bosonEntity.Add("Status", 0);
+                    bosonEntity.Add("Created", DateTime.Now);
+                    int i = 0;
+                    foreach(var findTrTd in findTr.ChildNodes)
+                    {
+                        bosonEntity.Add(ths[i++], findTrTd.InnerHtml);
+                    }
+                    SaveData2DB("Sizes4BrandReal", bosonEntity);
+                }
+
+            }
+            catch(Exception ex)
+            {
+
+            }
+
+
+        }
+
+
+
+        public static void DataCleaningT()
+        {
+            try
+            {
+                var targetCollection = DB.database.GetCollection("Sizes4Brand");
+
+                string brandName = "Adidas";
+                string gender = "Women";
+
+                List<IMongoQuery> qryList = new List<IMongoQuery>();
+                qryList.Add(Query.EQ("BrandName", brandName));
+
+                IMongoQuery query = Query.And(qryList);
+
+                var entity = targetCollection.FindOne(query);
+
+                HtmlDocument doc = new HtmlDocument();
+                doc.LoadHtml(entity[gender].ToString());
+
+                var findThs = doc.DocumentNode
+                           .Descendants("th");
+
+                List<string> thsList = new List<string>();
+
+                foreach (var findTh in findThs)
+                {
+                    thsList.Add(findTh.InnerHtml);
+                }
+
+                string[] ths = thsList.ToArray();
+
+                var findTrs = doc.DocumentNode
+                           .Descendants("tr")
+                           .Where(d =>
+                                d.Attributes.Contains("class")
+                                &&
+                                !d.Attributes["class"].Value.Contains("row-1 odd")
+                            );
+
+                BsonDocument bosonEntity = new BsonDocument();
+                ObjectId item_id = ObjectId.GenerateNewId();
+                bosonEntity.Add("_id", item_id);
+                bosonEntity.Add("BrandName", brandName);
+                bosonEntity.Add("Gender", gender);
+                bosonEntity.Add("Status", 0);
+                bosonEntity.Add("Created", DateTime.Now); ;
+
+                BsonArray chartArr = new BsonArray();
+                BsonDocument charDic;
+                foreach (var findTr in findTrs)
+                {
+                    charDic = new BsonDocument();
+                    int i = 0;
+                    foreach (var findTrTd in findTr.ChildNodes)
+                    {
+                        charDic.Add(ths[i++], findTrTd.InnerHtml);
+                    }
+                    chartArr.Add(charDic);
+                }
+                bosonEntity.Add("SizeCharts", chartArr);
+                SaveData2DB("Sizes4BrandReal", bosonEntity);
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            Console.ReadLine();
         }
 
         public static void SaveData2DB(string collectionName, BsonDocument bsonEntity)
