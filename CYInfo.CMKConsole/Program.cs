@@ -1,4 +1,7 @@
 ﻿using HtmlAgilityPack;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using MongoDB.Driver.Builders;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,15 +13,18 @@ using System.Threading.Tasks;
 
 namespace CYInfo.CMKConsole
 {
+    
     class Program
     {
+        private static DefaultMongoDb DB = new DefaultMongoDb("BasicData");
         static void Main(string[] args)
         {
             //Call_GetShoes_Api();
 
             //Call_GetFootSize_Api();
-
-            GetBrandSizes();
+            //GetBrandSizesUrl();
+            //GetBrandSizes();
+            GetBrandSizesSpecial();
         }
 
         public static void Call_GetShoes_Api()
@@ -93,10 +99,25 @@ namespace CYInfo.CMKConsole
                         d.Attributes["href"].Value.Contains("http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/")
                     );
 
+
+                BsonDocument bosonEntity;
+                ObjectId item_id;
+                string url, brandName;
+
             foreach(var entity in findclasses)
             {
-                string url = entity.GetAttributeValue("href", "");
-                string brandName = entity.InnerHtml;
+                
+                url = entity.GetAttributeValue("href", "");
+                brandName = entity.InnerHtml;
+
+                bosonEntity = new BsonDocument();
+                item_id = ObjectId.GenerateNewId();
+                bosonEntity.Add("_id", item_id);
+                bosonEntity.Add("BrandName", brandName);
+                bosonEntity.Add("BrandSizeUrl", url);
+                bosonEntity.Add("Status", 0);
+                bosonEntity.Add("Created", DateTime.Now);
+                SaveData2DB("Urls4Brand", bosonEntity);
             }
 
            return resultReturn;
@@ -111,53 +132,189 @@ namespace CYInfo.CMKConsole
             WebClient client = new WebClient();
             client.Encoding = System.Text.Encoding.GetEncoding("utf-8");
 
+            var targetCollection = DB.database.GetCollection("Urls4Brand");
 
 
-            //resultReturn = Encoding.UTF8.GetString(client.DownloadData("http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/acorn-size-chart/"));
-            resultReturn = Encoding.UTF8.GetString(client.DownloadData("http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/adidas-size-chart/"));
-            
-            StringBuilder pureText = new StringBuilder();
-            HtmlDocument doc = new HtmlDocument();
-            doc.LoadHtml(resultReturn);
 
-            var findclasses = doc.DocumentNode
-                    .Descendants("div")
-                    .Where(d =>
-                        d.Attributes.Contains("class")
-                        &&
-                        d.Attributes["class"].Value.Contains("tablepress-scroll-wrapper")
-                    );
+            List<IMongoQuery> qryList = new List<IMongoQuery>();
 
 
-            int i = 0;
-            foreach (var entity in findclasses)
+            qryList.Add(Query.EQ("Status", 0));
+
+            IMongoQuery query = Query.And(qryList);
+
+            var entities = targetCollection.Find(query);
+
+            foreach (var entity in entities)
             {
-               switch(i++)
-               {
-                   case 0:
-                       //women
-                       Console.WriteLine("women:");
-                       Console.WriteLine(entity.OuterHtml);
-                       continue;
-                   case 1:
-                       //men
-                       Console.WriteLine("men:");
-                       continue;
 
-                   case 2:
-                       //kids
-                       Console.WriteLine("kids:");
-                       continue;
-                   case 3:
-                       //Baby 
-                       Console.WriteLine("Baby:");
-                       continue;
-               }
+                try
+                {
 
+
+                    string brandName = entity["BrandName"].ToString();//"Adidas";
+                    string brandSizeUrl = entity["BrandSizeUrl"].ToString();//"http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/adidas-size-chart/";
+
+                    resultReturn = Encoding.UTF8.GetString(client.DownloadData(brandSizeUrl));
+
+                    StringBuilder pureText = new StringBuilder();
+                    HtmlDocument doc = new HtmlDocument();
+                    doc.LoadHtml(resultReturn);
+
+                    var findclasses = doc.DocumentNode
+                            .Descendants("div")
+                            .Where(d =>
+                                d.Attributes.Contains("class")
+                                &&
+                                d.Attributes["class"].Value.Contains("tablepress-scroll-wrapper")
+                            );
+
+
+                    int i = 0;
+                    BsonDocument bosonEntity = new BsonDocument();
+                    ObjectId item_id = ObjectId.GenerateNewId();
+                    bosonEntity.Add("_id", item_id);
+                    bosonEntity.Add("BrandName", brandName);
+                    bosonEntity.Add("Status", 0);
+                    bosonEntity.Add("Created", DateTime.Now);
+                    foreach (var findclass in findclasses)
+                    {
+                        //Gender 1 男鞋；2 女性；3 儿童；4 婴儿
+                        switch (i++)
+                        {
+                            case 0:
+                                //women
+                                bosonEntity.Add("Women", findclass.OuterHtml);
+                                break; ;
+                            case 1:
+                                //men
+                                bosonEntity.Add("Men", findclass.OuterHtml);
+                                break;
+
+                            case 2:
+                                //kids
+                                bosonEntity.Add("Kids", findclass.OuterHtml);
+                                break;
+                            case 3:
+                                //Baby 
+                                bosonEntity.Add("Baby", findclass.OuterHtml);
+                                break;
+                        }
+
+                    }
+                    SaveData2DB("Sizes4Brand", bosonEntity);
+
+                    entity["Status"] = 1;
+                }
+                catch (Exception ex)
+                {
+                    entity["Status"] = 2;
+                }
+
+                targetCollection.Save(entity);
             }
-
             Console.ReadKey();
             return resultReturn;
+        }
+
+
+
+        public static string GetBrandSizesSpecial()
+        {
+            string resultReturn = string.Empty;
+
+            WebClient client = new WebClient();
+            client.Encoding = System.Text.Encoding.GetEncoding("utf-8");
+
+            var targetCollection = DB.database.GetCollection("Urls4Brand");
+
+
+
+            List<IMongoQuery> qryList = new List<IMongoQuery>();
+
+
+            qryList.Add(Query.EQ("Status", 2));
+
+            IMongoQuery query = Query.And(qryList);
+
+            var entities = targetCollection.Find(query);
+
+            foreach (var entity in entities)
+            {
+
+                try
+                {
+
+
+                    string brandName = entity["BrandName"].ToString();//"Adidas";
+                    string brandSizeUrl = entity["BrandSizeUrl"].ToString();//"http://www.shoesizeconversionchart.net/shoe-size-charts-by-brand-name/adidas-size-chart/";
+
+                    resultReturn = Encoding.UTF8.GetString(client.DownloadData(brandSizeUrl));
+
+                    StringBuilder pureText = new StringBuilder();
+                    HtmlDocument doc = new HtmlDocument();
+                    doc.LoadHtml(resultReturn);
+
+                    var findclasses = doc.DocumentNode
+                            .Descendants("div")
+                            .Where(d =>
+                                d.Attributes.Contains("class")
+                                &&
+                                d.Attributes["class"].Value.Contains("tablepress-scroll-wrapper")
+                            );
+
+
+                    int i = 0;
+                    BsonDocument bosonEntity = new BsonDocument();
+                    ObjectId item_id = ObjectId.GenerateNewId();
+                    bosonEntity.Add("_id", item_id);
+                    bosonEntity.Add("BrandName", brandName);
+                    bosonEntity.Add("Status", 0);
+                    bosonEntity.Add("Created", DateTime.Now);
+                    foreach (var findclass in findclasses)
+                    {
+                        //Gender 1 男鞋；2 女性；3 儿童；4 婴儿
+                        switch (i++)
+                        {
+                            case 0:
+                                //women
+                                bosonEntity.Add("Women", findclass.OuterHtml);
+                                break; ;
+                            case 1:
+                                //men
+                                bosonEntity.Add("Men", findclass.OuterHtml);
+                                break;
+
+                            case 2:
+                                //kids
+                                bosonEntity.Add("Kids", findclass.OuterHtml);
+                                break;
+                            case 3:
+                                //Baby 
+                                bosonEntity.Add("Baby", findclass.OuterHtml);
+                                break;
+                        }
+
+                    }
+                    SaveData2DB("Sizes4Brand", bosonEntity);
+
+                    entity["Status"] = 1;
+                }
+                catch (Exception ex)
+                {
+                    entity["Status"] = 2;
+                }
+
+                targetCollection.Save(entity);
+            }
+            Console.ReadKey();
+            return resultReturn;
+        }
+
+        public static void SaveData2DB(string collectionName, BsonDocument bsonEntity)
+        {
+            var targetCollection = DB.database.GetCollection(collectionName);
+                targetCollection.Save(bsonEntity);
         }
 
 
