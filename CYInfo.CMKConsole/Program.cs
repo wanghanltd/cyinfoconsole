@@ -25,7 +25,8 @@ namespace CYInfo.CMKConsole
             //GetBrandSizesUrl();
             //GetBrandSizes();
             //GetBrandSizesSpecial();
-            DataCleaning();
+            //DataCleaning();
+            GetPrefix4Brand();
         }
 
         public static void Call_GetShoes_Api()
@@ -461,6 +462,88 @@ namespace CYInfo.CMKConsole
         {
             var targetCollection = DB.database.GetCollection(collectionName);
                 targetCollection.Save(bsonEntity);
+        }
+
+
+        public static void GetPrefix4Brand()
+        {
+
+            var targetCollection = DB.database.GetCollection("Urls4Brand");
+
+            
+            List<IMongoQuery> qryList = new List<IMongoQuery>();
+
+
+            qryList.Add(Query.EQ("Status", 1));
+
+            IMongoQuery query = Query.And(qryList);
+
+            var entities = targetCollection.Find(query);
+            BsonDocument bosonEntity = new BsonDocument();
+            ObjectId item_id;
+            string brandName = string.Empty,brandPrefix=string.Empty;
+            foreach (var entity in entities)
+            {
+                try
+                {
+
+                   
+                    brandName = entity["BrandName"].ToString();
+                    brandPrefix = brandName.Substring(0, 1);
+                    CollectingBrandName(brandPrefix,brandName);
+                    entity["Status"] = 2;
+                }
+                catch (Exception ex)
+                {
+                    entity["Status"] = 11;
+                }
+                targetCollection.Save(entity);
+            }
+        }
+
+
+        public static void CollectingBrandName(string brandPrefix,string brandName)
+        {
+
+            var targetCollection = DB.database.GetCollection("Prefix4Brand");
+
+
+            List<IMongoQuery> qryList = new List<IMongoQuery>();
+
+
+            qryList.Add(Query.EQ("BrandPrefix", brandPrefix));
+
+            IMongoQuery query = Query.And(qryList);
+
+            var entity = targetCollection.FindOne(query);
+            if(entity==null)
+            {
+                BsonDocument bosonEntity = new BsonDocument();
+                ObjectId item_id = ObjectId.GenerateNewId(); ;
+                bosonEntity.Add("BrandPrefix", brandPrefix);
+                BsonArray brandsArray = new BsonArray();
+
+                BsonDocument brandEntity = new BsonDocument();
+                brandEntity.Add("BrandName", brandName);
+                brandEntity.Add("Created", DateTime.Now);
+                brandsArray.Add(brandEntity);
+
+                bosonEntity.Add("Brands", brandsArray);
+
+                bosonEntity.Add("Status", 0);
+                bosonEntity.Add("Created", DateTime.Now);
+                targetCollection.Save(bosonEntity);
+
+            }
+            else
+            {
+                BsonDocument brandEntity = new BsonDocument();
+                brandEntity.Add("BrandName", brandName);
+                brandEntity.Add("Created", DateTime.Now);
+                entity["Brands"].AsBsonArray.Add(brandEntity);
+                targetCollection.Save(entity);
+            }
+
         }
 
 
