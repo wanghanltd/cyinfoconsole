@@ -25,7 +25,9 @@ namespace CYInfo.CMKConsole
             //GetBrandSizesUrl();
             //GetBrandSizes();
             //GetBrandSizesSpecial();
-            DataCleaning();
+            //DataCleaning();
+           // DataCleaningT();
+            GetPrefix4Brand();
         }
 
         public static void Call_GetShoes_Api()
@@ -393,8 +395,9 @@ namespace CYInfo.CMKConsole
             {
                 var targetCollection = DB.database.GetCollection("Sizes4Brand");
 
-                string brandName = "Adidas";
-                string gender = "Women";
+                string brandName = "International";
+                HtmlDocument doc;
+         
 
                 List<IMongoQuery> qryList = new List<IMongoQuery>();
                 qryList.Add(Query.EQ("BrandName", brandName));
@@ -402,52 +405,18 @@ namespace CYInfo.CMKConsole
                 IMongoQuery query = Query.And(qryList);
 
                 var entity = targetCollection.FindOne(query);
+                string[] genders = { "Women", "Men", "Kids", "Baby" };
 
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml(entity[gender].ToString());
-
-                var findThs = doc.DocumentNode
-                           .Descendants("th");
-
-                List<string> thsList = new List<string>();
-
-                foreach (var findTh in findThs)
+                foreach (string gender in genders)
                 {
-                    thsList.Add(findTh.InnerHtml);
-                }
-
-                string[] ths = thsList.ToArray();
-
-                var findTrs = doc.DocumentNode
-                           .Descendants("tr")
-                           .Where(d =>
-                                d.Attributes.Contains("class")
-                                &&
-                                !d.Attributes["class"].Value.Contains("row-1 odd")
-                            );
-
-                BsonDocument bosonEntity = new BsonDocument();
-                ObjectId item_id = ObjectId.GenerateNewId();
-                bosonEntity.Add("_id", item_id);
-                bosonEntity.Add("BrandName", brandName);
-                bosonEntity.Add("Gender", gender);
-                bosonEntity.Add("Status", 0);
-                bosonEntity.Add("Created", DateTime.Now); ;
-
-                BsonArray chartArr = new BsonArray();
-                BsonDocument charDic;
-                foreach (var findTr in findTrs)
-                {
-                    charDic = new BsonDocument();
-                    int i = 0;
-                    foreach (var findTrTd in findTr.ChildNodes)
+                    if (entity.IndexOfName(gender) >= 0)
                     {
-                        charDic.Add(ths[i++], findTrTd.InnerHtml);
+                        doc = new HtmlDocument();
+                        doc.LoadHtml(entity[gender].ToString());
+                        SaveSizeCharts(doc, brandName, gender);
                     }
-                    chartArr.Add(charDic);
                 }
-                bosonEntity.Add("SizeCharts", chartArr);
-                SaveData2DB("Sizes4BrandReal", bosonEntity);
+                
 
 
 
@@ -465,6 +434,112 @@ namespace CYInfo.CMKConsole
         {
             var targetCollection = DB.database.GetCollection(collectionName);
                 targetCollection.Save(bsonEntity);
+        }
+
+
+        public static string GenerateDic()
+        {
+            string return_str = string.Empty;
+
+            try
+            {
+                Dictionary<string, Object> requestParams = new Dictionary<string, object>();
+                requestParams.Add("CMD","TSA001");
+                Dictionary<string, string> paramsDic = new Dictionary<string, string>();
+                paramsDic.Add("BrandName","Adidas");
+                paramsDic.Add("Gender", "Women");
+                requestParams.Add("PARAMS",paramsDic);
+            }
+            catch(Exception ex)
+            {
+
+            }
+
+
+            return return_str;
+        }
+
+
+
+        public static void GetPrefix4Brand()
+        {
+
+            var targetCollection = DB.database.GetCollection("Urls4Brand");
+
+
+            List<IMongoQuery> qryList = new List<IMongoQuery>();
+
+
+            qryList.Add(Query.EQ("Status", 1));
+
+            IMongoQuery query = Query.And(qryList);
+
+            var entities = targetCollection.Find(query);
+            BsonDocument bosonEntity = new BsonDocument();
+            ObjectId item_id;
+            string brandName = string.Empty, brandPrefix = string.Empty;
+            foreach (var entity in entities)
+            {
+                try
+                {
+
+
+                    brandName = entity["BrandName"].ToString();
+                    brandPrefix = brandName.Substring(0, 1);
+                    CollectingBrandName(brandPrefix, brandName);
+                    entity["Status"] = 2;
+                }
+                catch (Exception ex)
+                {
+                    entity["Status"] = 11;
+                }
+                targetCollection.Save(entity);
+            }
+        }
+
+
+        public static void CollectingBrandName(string brandPrefix, string brandName)
+        {
+
+            var targetCollection = DB.database.GetCollection("Prefix4Brand");
+
+
+            List<IMongoQuery> qryList = new List<IMongoQuery>();
+
+
+            qryList.Add(Query.EQ("BrandPrefix", brandPrefix));
+
+            IMongoQuery query = Query.And(qryList);
+
+            var entity = targetCollection.FindOne(query);
+            if (entity == null)
+            {
+                BsonDocument bosonEntity = new BsonDocument();
+                ObjectId item_id = ObjectId.GenerateNewId(); ;
+                bosonEntity.Add("BrandPrefix", brandPrefix);
+                BsonArray brandsArray = new BsonArray();
+
+                BsonDocument brandEntity = new BsonDocument();
+                brandEntity.Add("BrandName", brandName);
+                brandEntity.Add("Created", DateTime.Now);
+                brandsArray.Add(brandEntity);
+
+                bosonEntity.Add("Brands", brandsArray);
+
+                bosonEntity.Add("Status", 0);
+                bosonEntity.Add("Created", DateTime.Now);
+                targetCollection.Save(bosonEntity);
+
+            }
+            else
+            {
+                BsonDocument brandEntity = new BsonDocument();
+                brandEntity.Add("BrandName", brandName);
+                brandEntity.Add("Created", DateTime.Now);
+                entity["Brands"].AsBsonArray.Add(brandEntity);
+                targetCollection.Save(entity);
+            }
+
         }
 
 
