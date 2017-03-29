@@ -26,7 +26,6 @@ namespace CYInfo.CMKConsole
             //GetBrandSizes();
             //GetBrandSizesSpecial();
             //DataCleaning();
-           // DataCleaningT();
             GetPrefix4Brand();
         }
 
@@ -395,9 +394,8 @@ namespace CYInfo.CMKConsole
             {
                 var targetCollection = DB.database.GetCollection("Sizes4Brand");
 
-                string brandName = "International";
-                HtmlDocument doc;
-         
+                string brandName = "Adidas";
+                string gender = "Women";
 
                 List<IMongoQuery> qryList = new List<IMongoQuery>();
                 qryList.Add(Query.EQ("BrandName", brandName));
@@ -405,18 +403,52 @@ namespace CYInfo.CMKConsole
                 IMongoQuery query = Query.And(qryList);
 
                 var entity = targetCollection.FindOne(query);
-                string[] genders = { "Women", "Men", "Kids", "Baby" };
 
-                foreach (string gender in genders)
+                HtmlDocument doc = new HtmlDocument();
+                doc.LoadHtml(entity[gender].ToString());
+
+                var findThs = doc.DocumentNode
+                           .Descendants("th");
+
+                List<string> thsList = new List<string>();
+
+                foreach (var findTh in findThs)
                 {
-                    if (entity.IndexOfName(gender) >= 0)
-                    {
-                        doc = new HtmlDocument();
-                        doc.LoadHtml(entity[gender].ToString());
-                        SaveSizeCharts(doc, brandName, gender);
-                    }
+                    thsList.Add(findTh.InnerHtml);
                 }
-                
+
+                string[] ths = thsList.ToArray();
+
+                var findTrs = doc.DocumentNode
+                           .Descendants("tr")
+                           .Where(d =>
+                                d.Attributes.Contains("class")
+                                &&
+                                !d.Attributes["class"].Value.Contains("row-1 odd")
+                            );
+
+                BsonDocument bosonEntity = new BsonDocument();
+                ObjectId item_id = ObjectId.GenerateNewId();
+                bosonEntity.Add("_id", item_id);
+                bosonEntity.Add("BrandName", brandName);
+                bosonEntity.Add("Gender", gender);
+                bosonEntity.Add("Status", 0);
+                bosonEntity.Add("Created", DateTime.Now); ;
+
+                BsonArray chartArr = new BsonArray();
+                BsonDocument charDic;
+                foreach (var findTr in findTrs)
+                {
+                    charDic = new BsonDocument();
+                    int i = 0;
+                    foreach (var findTrTd in findTr.ChildNodes)
+                    {
+                        charDic.Add(ths[i++], findTrTd.InnerHtml);
+                    }
+                    chartArr.Add(charDic);
+                }
+                bosonEntity.Add("SizeCharts", chartArr);
+                SaveData2DB("Sizes4BrandReal", bosonEntity);
 
 
 
@@ -437,36 +469,12 @@ namespace CYInfo.CMKConsole
         }
 
 
-        public static string GenerateDic()
-        {
-            string return_str = string.Empty;
-
-            try
-            {
-                Dictionary<string, Object> requestParams = new Dictionary<string, object>();
-                requestParams.Add("CMD","TSA001");
-                Dictionary<string, string> paramsDic = new Dictionary<string, string>();
-                paramsDic.Add("BrandName","Adidas");
-                paramsDic.Add("Gender", "Women");
-                requestParams.Add("PARAMS",paramsDic);
-            }
-            catch(Exception ex)
-            {
-
-            }
-
-
-            return return_str;
-        }
-
-
-
         public static void GetPrefix4Brand()
         {
 
             var targetCollection = DB.database.GetCollection("Urls4Brand");
 
-
+            
             List<IMongoQuery> qryList = new List<IMongoQuery>();
 
 
@@ -477,16 +485,16 @@ namespace CYInfo.CMKConsole
             var entities = targetCollection.Find(query);
             BsonDocument bosonEntity = new BsonDocument();
             ObjectId item_id;
-            string brandName = string.Empty, brandPrefix = string.Empty;
+            string brandName = string.Empty,brandPrefix=string.Empty;
             foreach (var entity in entities)
             {
                 try
                 {
 
-
+                   
                     brandName = entity["BrandName"].ToString();
                     brandPrefix = brandName.Substring(0, 1);
-                    CollectingBrandName(brandPrefix, brandName);
+                    CollectingBrandName(brandPrefix,brandName);
                     entity["Status"] = 2;
                 }
                 catch (Exception ex)
@@ -498,7 +506,7 @@ namespace CYInfo.CMKConsole
         }
 
 
-        public static void CollectingBrandName(string brandPrefix, string brandName)
+        public static void CollectingBrandName(string brandPrefix,string brandName)
         {
 
             var targetCollection = DB.database.GetCollection("Prefix4Brand");
@@ -512,7 +520,7 @@ namespace CYInfo.CMKConsole
             IMongoQuery query = Query.And(qryList);
 
             var entity = targetCollection.FindOne(query);
-            if (entity == null)
+            if(entity==null)
             {
                 BsonDocument bosonEntity = new BsonDocument();
                 ObjectId item_id = ObjectId.GenerateNewId(); ;
