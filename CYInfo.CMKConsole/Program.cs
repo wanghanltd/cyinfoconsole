@@ -136,7 +136,7 @@ namespace CYInfo.CMKConsole
 
             var targetCollection = DB.database.GetCollection("Urls4Brand");
 
-
+      
 
             List<IMongoQuery> qryList = new List<IMongoQuery>();
 
@@ -229,7 +229,7 @@ namespace CYInfo.CMKConsole
             client.Encoding = System.Text.Encoding.GetEncoding("utf-8");
 
             var targetCollection = DB.database.GetCollection("Urls4Brand");
-
+            
 
 
             List<IMongoQuery> qryList = new List<IMongoQuery>();
