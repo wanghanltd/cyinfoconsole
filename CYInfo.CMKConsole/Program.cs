@@ -478,7 +478,7 @@ namespace CYInfo.CMKConsole
             List<IMongoQuery> qryList = new List<IMongoQuery>();
 
 
-            qryList.Add(Query.EQ("Status", 1));
+            qryList.Add(Query.EQ("Status", 2));
 
             IMongoQuery query = Query.And(qryList);
 
@@ -529,7 +529,7 @@ namespace CYInfo.CMKConsole
 
                 BsonDocument brandEntity = new BsonDocument();
                 brandEntity.Add("BrandName", brandName);
-                brandEntity.Add("Created", DateTime.Now);
+                //brandEntity.Add("Created", DateTime.Now);
                 brandsArray.Add(brandEntity);
 
                 bosonEntity.Add("Brands", brandsArray);
@@ -543,7 +543,7 @@ namespace CYInfo.CMKConsole
             {
                 BsonDocument brandEntity = new BsonDocument();
                 brandEntity.Add("BrandName", brandName);
-                brandEntity.Add("Created", DateTime.Now);
+                //brandEntity.Add("Created", DateTime.Now);
                 entity["Brands"].AsBsonArray.Add(brandEntity);
                 targetCollection.Save(entity);
             }
