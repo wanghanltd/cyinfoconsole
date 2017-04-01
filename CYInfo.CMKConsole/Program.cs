@@ -26,7 +26,9 @@ namespace CYInfo.CMKConsole
             //GetBrandSizes();
             //GetBrandSizesSpecial();
             //DataCleaning();
-            GetPrefix4Brand();
+            //GetPrefix4Brand();
+
+            CleanDataSizes4Brand();
         }
 
         public static void Call_GetShoes_Api()
@@ -546,6 +548,60 @@ namespace CYInfo.CMKConsole
                 //brandEntity.Add("Created", DateTime.Now);
                 entity["Brands"].AsBsonArray.Add(brandEntity);
                 targetCollection.Save(entity);
+            }
+
+        }
+
+
+        public static void CleanDataSizes4Brand()
+        {
+
+
+            try
+            {
+                var targetCollection = DB.database.GetCollection("Sizes4BrandPure");
+
+
+
+                BsonDocument query = MongoDB.Bson.Serialization.BsonSerializer.Deserialize<BsonDocument>("{\"Women\": { $not: /.*Women's.*/i },\"Men\": { $exists: false } }");
+                QueryDocument queryDoc = new QueryDocument(query);
+
+                var entities = targetCollection.Find(queryDoc);
+                string[] genders = { "Men's", "Kids's", "Baby's" };
+                foreach(var entity in entities)
+                {
+
+                    string charts = entity["Women"].ToString();
+                   
+                        if (charts.ToLower().Contains("men's"))
+                        {
+
+                            entity["Men"] = charts;
+                            entity["Women"] = string.Empty;
+                            
+                        }
+                        else if (charts.ToLower().Contains("kids's"))
+                        {
+                            entity["Kids"] = charts;
+                            entity["Women"] = string.Empty;
+                        }
+                        else if (charts.ToLower().Contains("baby's"))
+                        {
+                            entity["Baby"] = charts;
+                            entity["Women"] = string.Empty;
+                        }
+              
+                    
+                    targetCollection.Save(entity);
+                }
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
             }
 
         }
