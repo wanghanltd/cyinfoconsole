@@ -25,10 +25,10 @@ namespace CYInfo.CMKConsole
             //GetBrandSizesUrl();
             //GetBrandSizes();
             //GetBrandSizesSpecial();
-            //DataCleaning();
+            DataCleaning();
             //GetPrefix4Brand();
 
-            CleanDataSizes4Brand();
+            //CleanDataSizes4Brand();
         }
 
         public static void Call_GetShoes_Api()
@@ -318,15 +318,19 @@ namespace CYInfo.CMKConsole
 
         public static void DataCleaning()
         {
+            string brandName = string.Empty; ;
             try
             {
                 var targetCollection = DB.database.GetCollection("Sizes4Brand");
                 var entities = targetCollection.FindAll();
                 HtmlDocument doc;
-                string brandName;
+               
                 string[] genders = { "Women", "Men", "Kids", "Baby" };
                 foreach (var entity in entities)
                 {
+
+                    try
+                    { 
                     brandName = entity["BrandName"].ToString();
                     foreach (string gender in genders)
                     {
@@ -337,12 +341,22 @@ namespace CYInfo.CMKConsole
                             SaveSizeCharts(doc, brandName, gender);
                         }
                     }
+                        }
+                    catch(Exception ex)
+                    {
+                        Console.WriteLine(ex.Message + "  brandName:" + brandName);
+                    }
                 }
+
+                
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                
+               
             }
+            Console.WriteLine("Please put ");
+            Console.ReadLine();
         }
 
         public static void SaveSizeCharts(HtmlDocument doc, string brandName, string gender)
@@ -559,39 +573,33 @@ namespace CYInfo.CMKConsole
 
             try
             {
-                var targetCollection = DB.database.GetCollection("Sizes4BrandPure");
+                var targetCollection = DB.database.GetCollection("Sizes4Brand");
 
 
 
-                BsonDocument query = MongoDB.Bson.Serialization.BsonSerializer.Deserialize<BsonDocument>("{\"Women\": { $not: /.*Women's.*/i },\"Men\": { $exists: false } }");
+                BsonDocument query = MongoDB.Bson.Serialization.BsonSerializer.Deserialize<BsonDocument>("{ \"Men\": { $exists: true }, \"Women\": \"\" }");//("{ \"Men\": { $not: /.*men's.*/i }, \"Women\": \"\" }");
                 QueryDocument queryDoc = new QueryDocument(query);
 
                 var entities = targetCollection.Find(queryDoc);
-                string[] genders = { "Men's", "Kids's", "Baby's" };
-                foreach(var entity in entities)
+
+                foreach (var entity in entities)
                 {
 
-                    string charts = entity["Women"].ToString();
-                   
-                        if (charts.ToLower().Contains("men's"))
-                        {
+                    string charts = entity["Men"].ToString();
 
-                            entity["Men"] = charts;
-                            entity["Women"] = string.Empty;
-                            
-                        }
-                        else if (charts.ToLower().Contains("kids's"))
-                        {
-                            entity["Kids"] = charts;
-                            entity["Women"] = string.Empty;
-                        }
-                        else if (charts.ToLower().Contains("baby's"))
-                        {
-                            entity["Baby"] = charts;
-                            entity["Women"] = string.Empty;
-                        }
-              
-                    
+
+                    if (charts.ToLower().Contains("kids's") || charts.ToLower().Contains("kids"))
+                    {
+                        entity["Kids"] = charts;
+                        entity["Men"] = string.Empty;
+                    }
+                    else if (charts.ToLower().Contains("baby's") || charts.ToLower().Contains("toddlers"))
+                    {
+                        entity["Baby"] = charts;
+                        entity["Men"] = string.Empty;
+                    }
+
+
                     targetCollection.Save(entity);
                 }
 
